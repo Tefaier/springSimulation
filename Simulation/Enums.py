@@ -12,3 +12,8 @@ class OutputStatIndex(Enum):
     Amplitude = 0,
     Force = 1  # currently present in FieldStatIndex instead, so it will be empty here
     Frequency = 2,  # not supported yet, relevant for forced
+
+class SideType(Enum):
+    x = 0,
+    y = 1,
+    z = 2
