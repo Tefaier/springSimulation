@@ -87,7 +87,7 @@ class SimulationContainer:
 
     def performForcedOscilation(self):
         if self.oscillationStart is None: return
-        proxyArray, _, side = self.getSideProxy(self.oscillatingSide)
+        proxyArray, side = self.getWallProxy(self.oscillatingSide)
         offset = calculateHarmonicOscillation(self.time - self.oscillationStart, self.oscillationFrequency, self.oscillationAmplitude)
         velocity = calculateHarmonicOscillationVelocity(self.time - self.oscillationStart, self.oscillationFrequency, self.oscillationAmplitude)
         if side == SideType.x:
@@ -103,3 +103,9 @@ class SimulationContainer:
             return (self.information[1], self.information[0], SideType.x)
         else:
             return (self.information[-2], self.information[-3], SideType.x)
+
+    def getWallProxy(self, side: tuple[int]) -> tuple[np.array, SideType]:
+        if side[0] == -1:
+            return (self.information[0], SideType.x)
+        else:
+            return (self.information[-1], SideType.x)
