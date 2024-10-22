@@ -45,9 +45,13 @@ class SimulationContainer:
         self.observedSide = side
 
     def stopOscillation(self):
+        proxyArray, side = self.getWallProxy(self.oscillatingSide)
+        if side == SideType.x:
+            proxyArray[FieldStatIndex.LocationX] = self.startInformation[FieldStatIndex.LocationX]
         self.oscillationStart = None
 
     def setForcedOscillation(self, side: tuple[int], amplitude: float, frequency: float = None):
+        self.stopOscillation()
         self.oscillationStart = self.time
         self.oscillatingSide = side
         self.oscillationAmplitude = amplitude
