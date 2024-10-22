@@ -60,8 +60,19 @@ class SimulationContainer:
         return self.generateReturn()
 
     def simpleIteration(self):
-        self.information[:, :-1, FieldStatIndex.OffsetX] = self.information[:, 1:, FieldStatIndex.LocationX] - self.information[:, :-1, FieldStatIndex.LocationX]
+        self.information[:-1, FieldStatIndex.OffsetX] = self.information[1:, FieldStatIndex.LocationX] - self.information[:-1, FieldStatIndex.LocationX]
         # do iteration stuff here
+        self.information[1:-1, FieldStatIndex.ForceX] = (
+            (self.offset - self.information[:-2, FieldStatIndex.OffsetX]) * self.k +
+            (self.information[1:-1, FieldStatIndex.OffsetX] - self.offset) * self.k
+        )
+        # deltax = v0*t + a*t^2/2
+        self.information[1:-1, FieldStatIndex.LocationX] += (
+            self.information[1:-1, FieldStatIndex.VelocityX] * self.deltaT.total_seconds() +
+            self.information[1:-1, FieldStatIndex.ForceX] * (self.deltaT.total_seconds()**2) / (2 * self.mass)
+        )
+        self.information[1:-1, FieldStatIndex.VelocityX] += self.information[1:-1, FieldStatIndex.ForceX] * self.deltaT.total_seconds() / self.mass
+
 
     def generateReturn(self) -> np.array:
         returnSize = 2
