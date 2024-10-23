@@ -8,28 +8,32 @@ from matplotlib.animation import FuncAnimation
 
 from Simulation.Container import SimulationContainer, calculateNaturalFrequency
 
-sys.setrecursionlimit(3000)
-
+kMaxRecursionLimit = 3000
+kSimulationStep = 10
 offset_0 = 0.1
-simulation = SimulationContainer([100], 1, 100, offset_0, pd.Timedelta(milliseconds=10))
+
+
+sys.setrecursionlimit(kMaxRecursionLimit)
+simulation = SimulationContainer([100], 1, 100, offset_0, pd.Timedelta(milliseconds=1))
 simulation.setObservedSite((1,))
 simulation.setForcedOscillation((-1,), 0.03, calculateNaturalFrequency(100 * 2, 1))
 
-simulation.iterate()
-data_to_draw = simulation.information[1:-1, 3:4].transpose() - [offset_0]
 
-
+max_delta = 0.01
 def animate(i):
-    global data_to_draw
-    for _ in range(5):
+    global max_delta
+    for _ in range(kSimulationStep):
         simulation.iterate()
     data_to_draw = simulation.information[1:-1, 3:4].transpose() - [offset_0]
+    max_delta = max(max_delta, data_to_draw.max())
+    print(max_delta, round(data_to_draw.sum(), 2))
+    # print(data_to_draw)
 
     ax.cla()
-    sns.heatmap(ax=ax, data=data_to_draw, cmap="vlag", cbar_ax=cbar_ax, vmax=0.002, vmin=-0.002)
+    sns.heatmap(ax=ax, data=data_to_draw, cmap="vlag", cbar_ax=cbar_ax, vmax=max_delta, vmin=-max_delta)
 
 
 grid_kws = {'width_ratios': (0.9, 0.05), 'wspace': 0.2}
 fig, (ax, cbar_ax) = plt.subplots(1, 2, gridspec_kw=grid_kws, figsize=(14, 4))
-ani = FuncAnimation(fig=fig, func=animate, frames=100, interval=1)
+ani = FuncAnimation(fig=fig, func=animate, frames=100, interval=10)
 plt.show()
