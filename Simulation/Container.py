@@ -6,7 +6,7 @@ import pandas as pd
 from scipy.optimize import brent
 
 from Simulation.Enums import FieldStatIndex, OutputStatIndex, SideType
-from Simulation.SimulationMath import calculateNaturalFrequency, calculateHarmonicOscillation, \
+from Simulation.SimulationMath import calculateNaturalVelocity, calculateHarmonicOscillation, \
     calculateHarmonicOscillationVelocity
 
 
@@ -51,12 +51,12 @@ class SimulationContainer:
             proxyArray[FieldStatIndex.LocationX.value] = self.startInformation[FieldStatIndex.LocationX.value]
         self.oscillationStart = None
 
-    def setForcedOscillation(self, side: tuple[int], amplitude: float, frequency: float = None):
+    def setForcedOscillation(self, side: tuple[int], amplitude: float, velocity: float = None):
         self.stopOscillation()
         self.oscillationStart = self.time
         self.oscillatingSide = side
         self.oscillationAmplitude = amplitude
-        self.oscillationFrequency = calculateNaturalFrequency(self.k * 2, self.mass) if frequency is None else frequency
+        self.oscillationVelocity = calculateNaturalVelocity(self.k * 2, self.mass) if velocity is None else velocity
 
     def iterate(self) -> np.array:
         self.time += self.deltaT
@@ -81,7 +81,7 @@ class SimulationContainer:
 
     def generateReturn(self) -> np.array:
         returnSize = 2
-        naturalFrequency = calculateNaturalFrequency(self.k * 2, self.mass)
+        naturalFrequency = calculateNaturalVelocity(self.k * 2, self.mass)
         proxyArray, proxyArrayPrevious, _ = self.getSideProxy(self.observedSide)
 
         returnArr = np.zeros((returnSize) if len(proxyArray.shape) == 1 else tuple([x - 2 for x in proxyArray.shape]) + (returnSize,), dtype=float)
