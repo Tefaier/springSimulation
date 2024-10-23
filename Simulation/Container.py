@@ -21,13 +21,13 @@ class SimulationContainer:
     time: pd.Timedelta
     deltaT: pd.Timedelta
     observedSide: tuple[int]
-    oscillatingSide: tuple[int]
+    oscillatingSide: tuple[int] = None
     oscillationFrequency: float = None
     oscillationAmplitude: float = None
-    oscillationStart: pd.Timedelta
+    oscillationStart: pd.Timedelta = None
 
     def __init__(self, dimensions: List[int], mass: float, k: float, offset: float, deltaT: pd.Timedelta):
-        self.dimensions = tuple(x + 2 for x in dimensions) + tuple(self.infoNumber,)
+        self.dimensions = tuple(x + 2 for x in dimensions) + (self.infoNumber,)
         self.information = np.zeros(self.dimensions, dtype=float)
         self.mass = mass
         self.k = k
@@ -37,7 +37,7 @@ class SimulationContainer:
         self.setObservedSite((1,))
         posX = np.arange(0, self.dimensions[0], dtype=float) * offset
         # np.repeat + np.reshape when there are more dimensions
-        self.information[:, FieldStatIndex.LocationX] = posX
+        self.information[:, FieldStatIndex.LocationX.value] = posX
         # copy initial information for use
         self.startInformation = self.information.copy()
 
@@ -45,9 +45,10 @@ class SimulationContainer:
         self.observedSide = side
 
     def stopOscillation(self):
+        if self.oscillatingSide == None: return
         proxyArray, side = self.getWallProxy(self.oscillatingSide)
         if side == SideType.x:
-            proxyArray[FieldStatIndex.LocationX] = self.startInformation[FieldStatIndex.LocationX]
+            proxyArray[FieldStatIndex.LocationX.value] = self.startInformation[FieldStatIndex.LocationX.value]
         self.oscillationStart = None
 
     def setForcedOscillation(self, side: tuple[int], amplitude: float, frequency: float = None):
@@ -64,18 +65,18 @@ class SimulationContainer:
         return self.generateReturn()
 
     def simpleIteration(self):
-        self.information[:-1, FieldStatIndex.OffsetX] = self.information[1:, FieldStatIndex.LocationX] - self.information[:-1, FieldStatIndex.LocationX]
+        self.information[:-1, FieldStatIndex.OffsetX.value] = self.information[1:, FieldStatIndex.LocationX.value] - self.information[:-1, FieldStatIndex.LocationX.value]
         # do iteration stuff here
-        self.information[1:-1, FieldStatIndex.ForceX] = (
-            (self.offset - self.information[:-2, FieldStatIndex.OffsetX]) * self.k +
-            (self.information[1:-1, FieldStatIndex.OffsetX] - self.offset) * self.k
+        self.information[1:-1, FieldStatIndex.ForceX.value] = (
+            (self.offset - self.information[:-2, FieldStatIndex.OffsetX.value]) * self.k +
+            (self.information[1:-1, FieldStatIndex.OffsetX.value] - self.offset) * self.k
         )
         # deltax = v0*t + a*t^2/2
-        self.information[1:-1, FieldStatIndex.LocationX] += (
-            self.information[1:-1, FieldStatIndex.VelocityX] * self.deltaT.total_seconds() +
-            self.information[1:-1, FieldStatIndex.ForceX] * (self.deltaT.total_seconds()**2) / (2 * self.mass)
+        self.information[1:-1, FieldStatIndex.LocationX.value] += (
+            self.information[1:-1, FieldStatIndex.VelocityX.value] * self.deltaT.total_seconds() +
+            self.information[1:-1, FieldStatIndex.ForceX.value] * (self.deltaT.total_seconds()**2) / (2 * self.mass)
         )
-        self.information[1:-1, FieldStatIndex.VelocityX] += self.information[1:-1, FieldStatIndex.ForceX] * self.deltaT.total_seconds() / self.mass
+        self.information[1:-1, FieldStatIndex.VelocityX.value] += self.information[1:-1, FieldStatIndex.ForceX.value] * self.deltaT.total_seconds() / self.mass
 
 
     def generateReturn(self) -> np.array:
@@ -83,31 +84,31 @@ class SimulationContainer:
         naturalFrequency = calculateNaturalFrequency(self.k * 2, self.mass)
         proxyArray, proxyArrayPrevious, _ = self.getSideProxy(self.observedSide)
 
-        returnArr = np.zeros((returnSize) if len(proxyArray.shape) == 1 else tuple([x - 2 for x in proxyArray.shape]) + tuple(returnSize,), dtype=float)
+        returnArr = np.zeros((returnSize) if len(proxyArray.shape) == 1 else tuple([x - 2 for x in proxyArray.shape]) + (returnSize,), dtype=float)
         # amplitude
         # mv^2/2 + mw^2x^2/2 = mw^2X^2/2
         # v^2/w^2 + x^2 = X^2
-        returnArr[OutputStatIndex.Amplitude] = (
+        returnArr[OutputStatIndex.Amplitude.value] = (
             np.sqrt(
-                np.power(proxyArray[FieldStatIndex.VelocityX], 2) / (naturalFrequency**2) +
-                np.power(np.maximum(proxyArray[FieldStatIndex.LocationX], proxyArrayPrevious[FieldStatIndex.LocationX]), 2)
+                np.power(proxyArray[FieldStatIndex.VelocityX.value], 2) / (naturalFrequency**2) +
+                np.power(np.maximum(proxyArray[FieldStatIndex.LocationX.value], proxyArrayPrevious[FieldStatIndex.LocationX.value]), 2)
             ))
         # force, in positive index direction
-        returnArr[OutputStatIndex.Force] = (
-            (proxyArray[FieldStatIndex.OffsetX] - self.offset) * self.k +
-            (self.offset - proxyArrayPrevious[FieldStatIndex.OffsetX]) * self.k
+        returnArr[OutputStatIndex.Force.value] = (
+            (proxyArray[FieldStatIndex.OffsetX.value] - self.offset) * self.k +
+            (self.offset - proxyArrayPrevious[FieldStatIndex.OffsetX.value]) * self.k
         )
 
         return returnArr
 
     def performForcedOscilation(self):
         if self.oscillationStart is None: return
-        proxyArray, side = self.getWallProxy(self.oscillatingSide)
+        proxyArray, proxyStart, side = self.getWallProxy(self.oscillatingSide)
         offset = calculateHarmonicOscillation(self.time - self.oscillationStart, self.oscillationFrequency, self.oscillationAmplitude)
         velocity = calculateHarmonicOscillationVelocity(self.time - self.oscillationStart, self.oscillationFrequency, self.oscillationAmplitude)
         if side == SideType.x:
-            proxyArray[FieldStatIndex.LocationX] = self.startInformation[FieldStatIndex.LocationX] + offset
-            proxyArray[FieldStatIndex.VelocityX] = velocity
+            proxyArray[FieldStatIndex.LocationX.value] = proxyStart[FieldStatIndex.LocationX.value] + offset
+            proxyArray[FieldStatIndex.VelocityX.value] = velocity
 
     # [0] is array of ones that are at the required side
     # [1] is array of ones that are just before [0] in terms on index position
@@ -119,8 +120,8 @@ class SimulationContainer:
         else:
             return (self.information[-2], self.information[-3], SideType.x)
 
-    def getWallProxy(self, side: tuple[int]) -> tuple[np.array, SideType]:
+    def getWallProxy(self, side: tuple[int]) -> tuple[np.array, np.array, SideType]:
         if side[0] == -1:
-            return (self.information[0], SideType.x)
+            return (self.information[0], self.startInformation[0], SideType.x)
         else:
-            return (self.information[-1], SideType.x)
+            return (self.information[-1], self.startInformation[-1], SideType.x)
