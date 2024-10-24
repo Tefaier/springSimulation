@@ -9,12 +9,13 @@ from matplotlib.animation import FuncAnimation
 from Simulation.Container import SimulationContainer, calculateNaturalFrequency
 
 kMaxRecursionLimit = 3000
-kSimulationStep = 10
+kMillisecondsBetweenFrames = 20
+kSimulationStep = kMillisecondsBetweenFrames * 1
 offset_0 = 0.1
 
 
 sys.setrecursionlimit(kMaxRecursionLimit)
-simulation = SimulationContainer([100], 1, 100, offset_0, pd.Timedelta(milliseconds=1))
+simulation = SimulationContainer([30], 0.1, 10, offset_0, pd.Timedelta(milliseconds=1))
 simulation.setObservedSite((1,))
 simulation.setForcedOscillation((-1,), 0.03, calculateNaturalFrequency(100 * 2, 1))
 
@@ -35,5 +36,5 @@ def animate(i):
 
 grid_kws = {'width_ratios': (0.9, 0.05), 'wspace': 0.2}
 fig, (ax, cbar_ax) = plt.subplots(1, 2, gridspec_kw=grid_kws, figsize=(14, 4))
-ani = FuncAnimation(fig=fig, func=animate, frames=100, interval=10)
+ani = FuncAnimation(fig=fig, func=animate, frames=100, interval=kMillisecondsBetweenFrames)
 plt.show()
