@@ -7,9 +7,10 @@ from Simulation.Container import SimulationContainer
 from Simulation.SimulationMath import calculateNaturalFrequency
 
 if __name__ == "__main__":
-    simulation = SimulationContainer([100], 1, 100, 0.1, pd.Timedelta(milliseconds=10))
+    simulation = SimulationContainer([100], 1, 10, 0.1, pd.Timedelta(milliseconds=10))
     simulation.setObservedSite((1,))
     simulation.setForcedOscillation((-1,), 0.03, calculateNaturalFrequency(100 * 2, 1))
     output = list()
-    for i in range(0, 100):
+    for i in range(0, 10000):
         output.append(simulation.iterate())
+    print(output)
