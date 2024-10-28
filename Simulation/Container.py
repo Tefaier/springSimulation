@@ -9,6 +9,19 @@ from Simulation.Enums import FieldStatIndex, OutputStatIndex, SideType
 from Simulation.SimulationMath import calculateNaturalFrequency, calculateHarmonicOscillation, \
     calculateHarmonicOscillationVelocity
 
+class OscillationInfo:
+    oscillatingSide: tuple[int] = None
+    oscillationFrequency: float = None
+    oscillationAmplitude: float = None
+    oscillationStart: pd.Timedelta = None
+
+    def __init__(self,
+                 oscillatingSide: tuple[int],
+                 oscillationAmplitude: float,
+                 oscillationFrequency: float = None):
+        self.oscillatingSide = oscillatingSide
+        self.oscillationFrequency = oscillationFrequency
+        self.oscillationAmplitude = oscillationAmplitude
 
 class SimulationContainer:
     infoNumber = 6
@@ -21,10 +34,7 @@ class SimulationContainer:
     offset: float
     time: pd.Timedelta
     deltaT: pd.Timedelta
-    oscillatingSide: tuple[int] = None
-    oscillationFrequency: float = None
-    oscillationAmplitude: float = None
-    oscillationStart: pd.Timedelta = None
+    oscillations: List[OscillationInfo] = None
     frictionCoefficient: float
     naturalFrequency: float
 
@@ -46,19 +56,27 @@ class SimulationContainer:
         # copy initial information for use
         self.startInformation = self.information.copy()
 
-    def stopOscillation(self):
-        if self.oscillatingSide == None: return
-        proxyArray, _, side = self.getWallProxy(self.oscillatingSide)
-        if side == SideType.x:
-            proxyArray[FieldStatIndex.LocationX.value] = self.startInformation[FieldStatIndex.LocationX.value]
-        self.oscillationStart = None
+    def setForcedDisplacement(self, mask: np.array, displacement: float, useStartInfo: bool = False):
+        if useStartInfo:
+            self.information[mask, FieldStatIndex.LocationX.value] = self.startInformation[mask, FieldStatIndex.LocationX.value] + displacement
+        else:
+            self.information[mask, FieldStatIndex.LocationX.value] += displacement
 
-    def setForcedOscillation(self, side: tuple[int], amplitude: float, frequency: float = None):
+    def stopOscillation(self):
+        if self.oscillations is None: return
+        for oscillation in self.oscillations:
+            proxyArray, startInformationProxy, side = self.getWallProxy(oscillation.oscillatingSide)
+            if side == SideType.x:
+                proxyArray[FieldStatIndex.LocationX.value] = startInformationProxy[FieldStatIndex.LocationX.value]
+        self.oscillations = None
+
+    def setForcedOscillation(self, oscillations: List[OscillationInfo]):
         self.stopOscillation()
-        self.oscillationStart = self.time
-        self.oscillatingSide = side
-        self.oscillationAmplitude = amplitude
-        self.oscillationFrequency = calculateNaturalFrequency(self.k * 2, self.mass) if frequency is None else frequency
+        self.oscillations = oscillations
+        if self.oscillations is None: return
+        for oscillation in self.oscillations:
+            oscillation.oscillationStart = self.time
+            oscillation.oscillationFrequency = calculateNaturalFrequency(self.k * 2, self.mass) if oscillation.oscillationFrequency is None else oscillation.oscillationFrequency
 
     def iterate(self) -> np.array:
         self.time += self.deltaT
@@ -144,16 +162,15 @@ class SimulationContainer:
         )
         self.information[:-1, FieldStatIndex.OffsetX.value] = self.information[1:, FieldStatIndex.LocationX.value] - self.information[:-1, FieldStatIndex.LocationX.value]
 
-
-
     def performForcedOscilation(self):
-        if self.oscillationStart is None: return
-        proxyArray, proxyStart, side = self.getWallProxy(self.oscillatingSide)
-        offset = calculateHarmonicOscillation(self.time - self.oscillationStart, self.oscillationFrequency, self.oscillationAmplitude)
-        velocity = calculateHarmonicOscillationVelocity(self.time - self.oscillationStart, self.oscillationFrequency, self.oscillationAmplitude)
-        if side == SideType.x:
-            proxyArray[FieldStatIndex.LocationX.value] = proxyStart[FieldStatIndex.LocationX.value] + offset
-            proxyArray[FieldStatIndex.VelocityX.value] = velocity
+        if self.oscillations is None: return
+        for oscillation in self.oscillations:
+            proxyArray, proxyStart, side = self.getWallProxy(oscillation.oscillatingSide)
+            offset = calculateHarmonicOscillation(self.time - oscillation.oscillationStart, oscillation.oscillationFrequency, oscillation.oscillationAmplitude)
+            velocity = calculateHarmonicOscillationVelocity(self.time - oscillation.oscillationStart, oscillation.oscillationFrequency, oscillation.oscillationAmplitude)
+            if side == SideType.x:
+                proxyArray[FieldStatIndex.LocationX.value] = proxyStart[FieldStatIndex.LocationX.value] + offset
+                proxyArray[FieldStatIndex.VelocityX.value] = velocity
 
     # [0] is array of ones that are at the required side
     # [1] is array of ones that are just before [0] in terms on index position
