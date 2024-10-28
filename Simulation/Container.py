@@ -21,7 +21,6 @@ class SimulationContainer:
     offset: float
     time: pd.Timedelta
     deltaT: pd.Timedelta
-    observedSide: tuple[int]
     oscillatingSide: tuple[int] = None
     oscillationFrequency: float = None
     oscillationAmplitude: float = None
@@ -39,7 +38,6 @@ class SimulationContainer:
         self.frictionCoefficient = frictionCoefficient
         self.deltaT = deltaT
         self.offset = offset
-        self.setObservedSite((1,))
         self.naturalFrequency = calculateNaturalFrequency(self.k * 2, self.mass)
         posX = np.arange(0, self.dimensions[0], dtype=float) * offset
         # np.repeat + np.reshape when there are more dimensions
@@ -47,9 +45,6 @@ class SimulationContainer:
         self.information[:-1, FieldStatIndex.OffsetX.value] = self.information[1:, FieldStatIndex.LocationX.value] - self.information[:-1, FieldStatIndex.LocationX.value]
         # copy initial information for use
         self.startInformation = self.information.copy()
-
-    def setObservedSite(self, side: tuple[int]):
-        self.observedSide = side
 
     def stopOscillation(self):
         if self.oscillatingSide == None: return
@@ -69,7 +64,7 @@ class SimulationContainer:
         self.time += self.deltaT
         self.performForcedOscilation()
         self.simpleIteration()
-        return self.generateReturn()
+        return self.information
 
     def simpleIteration(self):
         # do iteration stuff here
@@ -150,29 +145,6 @@ class SimulationContainer:
         self.information[:-1, FieldStatIndex.OffsetX.value] = self.information[1:, FieldStatIndex.LocationX.value] - self.information[:-1, FieldStatIndex.LocationX.value]
 
 
-
-
-    def generateReturn(self) -> np.array:
-        returnSize = 2
-        proxyArray, proxyArrayPrevious, _ = self.getSideProxy(self.observedSide)
-
-        returnArr = np.zeros((returnSize) if len(proxyArray.shape) == 1 else tuple([x - 2 for x in proxyArray.shape]) + (returnSize,), dtype=float)
-        # amplitude
-        # mv^2/2 + mw^2x^2/2 = mw^2X^2/2
-        # v^2/w^2 + x^2 = X^2
-        returnArr[OutputStatIndex.Amplitude.value] = (
-            np.sqrt(
-                np.power(proxyArray[FieldStatIndex.VelocityX.value], 2) / (self.naturalFrequency**2) +
-                np.power(np.maximum(proxyArray[FieldStatIndex.OffsetX.value], proxyArrayPrevious[FieldStatIndex.OffsetX.value]) -
-                         (proxyArray[FieldStatIndex.OffsetX.value] + proxyArrayPrevious[FieldStatIndex.OffsetX.value]) / 2, 2)
-            ))
-        # force, in positive index direction
-        returnArr[OutputStatIndex.Force.value] = (
-            (proxyArray[FieldStatIndex.OffsetX.value] - self.offset) * self.k +
-            (self.offset - proxyArrayPrevious[FieldStatIndex.OffsetX.value]) * self.k
-        )
-
-        return returnArr
 
     def performForcedOscilation(self):
         if self.oscillationStart is None: return
