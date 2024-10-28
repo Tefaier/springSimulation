@@ -14,8 +14,5 @@ if __name__ == "__main__":
     simulation.setForcedOscillation([
         OscillationInfo((-1,), offset / 3, calculateNaturalFrequency(mass=mass, k=k)),
     ])
-    output = list()
     for i in range(0, 10000):
         simulation.iterate()
-        output.append(simulation.information.copy())
-    print(output)

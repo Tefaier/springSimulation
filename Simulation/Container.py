@@ -117,7 +117,7 @@ class SimulationContainer:
         # if new energy is higher than should be
         energyHigher = np.where(newEnergy >= self.information[1:-1, FieldStatIndex.Energy.value] + 1e-25, True, False)
         amplitudeOvershoot = np.where(
-            np.power(self.getOCO(), 2) * self.k / 2 > self.information[1:-1, FieldStatIndex.Energy.value], True, False
+            np.power(self.getOCO(), 2) * self.k / 2 > self.information[1:-1, FieldStatIndex.Energy.value] + 1e-25, True, False
         )
         # overshoot in positive direction
         mask = np.logical_and(
@@ -135,11 +135,7 @@ class SimulationContainer:
             )
         )[mask]
         # overshoot in negative direction
-        mask = np.logical_and(
-            amplitudeOvershoot,
-            np.where(
-                self.information[:-2, FieldStatIndex.OffsetX.value] <
-                self.information[1:-1,FieldStatIndex.OffsetX.value], True, False))
+        mask = np.logical_xor(amplitudeOvershoot, mask)
         self.information[1:-1, FieldStatIndex.LocationX.value][mask] = (
                 self.information[1:-1, FieldStatIndex.LocationX.value] - (
                 self.information[:-2, FieldStatIndex.OffsetX.value] - (
@@ -149,23 +145,16 @@ class SimulationContainer:
         )
         )[mask]
         self.information[1:-1, FieldStatIndex.VelocityX.value][amplitudeOvershoot] = 0
-        # only speed overshoot to be solved
-        self.information[1: -1, FieldStatIndex.VelocityX.value][np.logical_xor(energyHigher, amplitudeOvershoot)] = (
-            np.sqrt((self.information[1:-1, FieldStatIndex.Energy.value] - np.power(
-                np.maximum(self.information[:-2, FieldStatIndex.OffsetX.value], self.information[1:-1, FieldStatIndex.OffsetX.value]) -
-                (self.information[:-2, FieldStatIndex.OffsetX.value] + self.information[1:-1, FieldStatIndex.OffsetX.value]) / 2, 2) *
-            self.k / 2) * 2 / self.mass) * np.sign(self.information[1: -1, FieldStatIndex.VelocityX.value])
-        )
-        # energy is lower so speed is increased
+        # adjust speed is needed only
         energyLower = np.logical_not(energyHigher)
-        self.information[1: -1, FieldStatIndex.VelocityX.value][energyLower] = (
-                np.sqrt((self.information[1:-1, FieldStatIndex.Energy.value] - np.power(
-                    np.maximum(self.information[:-2, FieldStatIndex.OffsetX.value],
-                               self.information[1:-1, FieldStatIndex.OffsetX.value]) -
-                    (self.information[:-2, FieldStatIndex.OffsetX.value] + self.information[1:-1,
-                                                                           FieldStatIndex.OffsetX.value]) / 2, 2) *
-                         self.k / 2) * 2 / self.mass) * np.sign(self.information[1: -1, FieldStatIndex.VelocityX.value])
-        )
+        # mask is (for energy being lower than should) or (for energy being higher than should be and no overshoot by amplitude)
+        mask = np.logical_or(energyLower, np.logical_xor(energyHigher, amplitudeOvershoot))
+        self.information[1: -1, FieldStatIndex.VelocityX.value][mask] = (
+            np.sqrt(np.maximum(np.zeros((self.information.shape[0] - 2,)),
+                (self.information[1:-1, FieldStatIndex.Energy.value] - np.power(self.getOCO(), 2) * self.k / 2) * 2 / self.mass
+            )) * np.sign(self.information[1: -1, FieldStatIndex.VelocityX.value])
+        )[mask]
+        # update offset after forced change
         self.information[:-1, FieldStatIndex.OffsetX.value] = self.information[1:, FieldStatIndex.LocationX.value] - self.information[:-1, FieldStatIndex.LocationX.value]
 
     def getOCO(self) -> np.array:
