@@ -115,33 +115,39 @@ class SimulationContainer:
             self.k / 2
         )
         # if new energy is higher than should be
-        energyHigher = np.where(newEnergy >= self.information[1:-1, FieldStatIndex.Energy.value])
+        energyHigher = np.where(newEnergy >= self.information[1:-1, FieldStatIndex.Energy.value] + 1e-25, True, False)
         amplitudeOvershoot = np.where(
-            np.power(
-                np.maximum(self.information[:-2, FieldStatIndex.OffsetX.value], self.information[1:-1, FieldStatIndex.OffsetX.value]) -
-                (self.information[:-2, FieldStatIndex.OffsetX.value] + self.information[1:-1, FieldStatIndex.OffsetX.value]) / 2, 2) *
-            self.k / 2 > self.information[1:-1, FieldStatIndex.Energy.value]
+            np.power(self.getOCO(), 2) * self.k / 2 > self.information[1:-1, FieldStatIndex.Energy.value], True, False
         )
         # overshoot in positive direction
-        self.information[1:-1, FieldStatIndex.LocationX.value][np.logical_and(amplitudeOvershoot, np.where(self.information[:-2, FieldStatIndex.OffsetX.value] > self.information[1:-1, FieldStatIndex.OffsetX.value]))] = (
+        mask = np.logical_and(
+                amplitudeOvershoot,
+                np.where(
+                    self.information[:-2, FieldStatIndex.OffsetX.value] >
+                    self.information[1:-1, FieldStatIndex.OffsetX.value], True, False
+                ))
+        self.information[1:-1, FieldStatIndex.LocationX.value][mask] = (
             self.information[1:-1, FieldStatIndex.LocationX.value] - (
                 self.information[:-2, FieldStatIndex.OffsetX.value] - (
                 self.information[:-2, FieldStatIndex.OffsetX.value] + self.information[1:-1,
                                                                       FieldStatIndex.OffsetX.value]) / 2 -
                 np.sqrt(self.information[1:-1, FieldStatIndex.Energy.value] * 2 / self.k)
             )
-        )
+        )[mask]
         # overshoot in negative direction
-        self.information[1:-1, FieldStatIndex.LocationX.value][np.logical_and(amplitudeOvershoot, np.where(
-            self.information[:-2, FieldStatIndex.OffsetX.value] < self.information[1:-1,
-                                                                  FieldStatIndex.OffsetX.value]))] = (
+        mask = np.logical_and(
+            amplitudeOvershoot,
+            np.where(
+                self.information[:-2, FieldStatIndex.OffsetX.value] <
+                self.information[1:-1,FieldStatIndex.OffsetX.value], True, False))
+        self.information[1:-1, FieldStatIndex.LocationX.value][mask] = (
                 self.information[1:-1, FieldStatIndex.LocationX.value] - (
                 self.information[:-2, FieldStatIndex.OffsetX.value] - (
                 self.information[:-2, FieldStatIndex.OffsetX.value] + self.information[1:-1,
                                                                       FieldStatIndex.OffsetX.value]) / 2 +
                 np.sqrt(self.information[1:-1, FieldStatIndex.Energy.value] * 2 / self.k)
         )
-        )
+        )[mask]
         self.information[1:-1, FieldStatIndex.VelocityX.value][amplitudeOvershoot] = 0
         # only speed overshoot to be solved
         self.information[1: -1, FieldStatIndex.VelocityX.value][np.logical_xor(energyHigher, amplitudeOvershoot)] = (
@@ -161,6 +167,12 @@ class SimulationContainer:
                          self.k / 2) * 2 / self.mass) * np.sign(self.information[1: -1, FieldStatIndex.VelocityX.value])
         )
         self.information[:-1, FieldStatIndex.OffsetX.value] = self.information[1:, FieldStatIndex.LocationX.value] - self.information[:-1, FieldStatIndex.LocationX.value]
+
+    def getOCO(self) -> np.array:
+        return (np.maximum(
+            self.information[:-2, FieldStatIndex.OffsetX.value],
+            self.information[1:-1, FieldStatIndex.OffsetX.value]) -
+                ((self.information[:-2, FieldStatIndex.OffsetX.value] + self.information[1:-1, FieldStatIndex.OffsetX.value]) / 2))
 
     def performForcedOscilation(self):
         if self.oscillations is None: return
