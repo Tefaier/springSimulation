@@ -1,13 +1,17 @@
 import pandas as pd
 import matplotlib.pyplot as plt
-from Simulation.Container import SimulationContainer
+from Simulation.Container import SimulationContainer, OscillationInfo
 from Simulation.SimulationMath import calculateNaturalFrequency
 from Simulation import Enums
 
 countIterations = 100
-simulation = SimulationContainer([100], 1, 100, 0.1, pd.Timedelta(milliseconds=10))
-simulation.setObservedSite((1,))
-simulation.setForcedOscillation((-1,), 0.03, calculateNaturalFrequency(100 * 2, 1))
+mass = 1
+k = 100
+offset = 0.1
+simulation = SimulationContainer([100], mass, k, offset, pd.Timedelta(milliseconds=10))
+simulation.setForcedOscillation([
+    OscillationInfo((-1,), offset / 3, calculateNaturalFrequency(mass=mass, k=k)),
+])
 output = []
 forces1 = []
 forces2 = []

@@ -6,18 +6,21 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 
-from Simulation.Container import SimulationContainer, calculateNaturalFrequency
+from Simulation.Container import SimulationContainer, calculateNaturalFrequency, OscillationInfo
 
 kMaxRecursionLimit = 3000
 kMillisecondsBetweenFrames = 20
 kSimulationStep = kMillisecondsBetweenFrames * 1
 offset_0 = 0.1
+mass = 0.1
+k = 30
 
 
 sys.setrecursionlimit(kMaxRecursionLimit)
-simulation = SimulationContainer([30], 0.1, 10, offset_0, pd.Timedelta(milliseconds=1))
-simulation.setObservedSite((1,))
-simulation.setForcedOscillation((-1,), 0.03, calculateNaturalFrequency(100 * 2, 1))
+simulation = SimulationContainer([50], mass, k, offset_0, pd.Timedelta(milliseconds=1), 0.1)
+simulation.setForcedOscillation([
+        OscillationInfo((-1,), offset_0 / 3, calculateNaturalFrequency(mass=mass, k=k)),
+    ])
 
 
 max_delta = 0.01
