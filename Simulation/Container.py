@@ -91,6 +91,11 @@ class SimulationContainer:
             (self.information[1:-1, FieldStatIndex.OffsetX.value] - self.offset) * self.k -
             self.information[1:-1, FieldStatIndex.VelocityX.value] * self.frictionCoefficient
         )
+        mask = np.where(
+            self.information[1:-1, FieldStatIndex.ForceX.value] *
+            (self.information[1:-1, FieldStatIndex.OffsetX.value] -
+             self.information[:-2, FieldStatIndex.OffsetX.value]) < 0)
+        self.information[1:-1, FieldStatIndex.ForceX.value][mask] = 0
         # new pure velocity
         self.information[1:-1, FieldStatIndex.VelocityX.value] += self.information[1:-1, FieldStatIndex.ForceX.value] * self.deltaT.total_seconds() / self.mass
         # trying to apply and as well limit by energy
