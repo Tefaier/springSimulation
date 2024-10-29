@@ -14,14 +14,17 @@ class OscillationInfo:
     oscillationFrequency: float = None
     oscillationAmplitude: float = None
     oscillationStart: pd.Timedelta = None
+    oscillationDirection: float = 1
 
     def __init__(self,
                  oscillatingSide: tuple[int],
                  oscillationAmplitude: float,
-                 oscillationFrequency: float = None):
+                 oscillationFrequency: float = None,
+                 oscillationDirection: float = 1):
         self.oscillatingSide = oscillatingSide
         self.oscillationFrequency = oscillationFrequency
         self.oscillationAmplitude = oscillationAmplitude
+        self.oscillationDirection = oscillationDirection
 
 class SimulationContainer:
     infoNumber = 6
@@ -172,8 +175,8 @@ class SimulationContainer:
         if self.oscillations is None: return
         for oscillation in self.oscillations:
             proxyArray, proxyStart, side = self.getWallProxy(oscillation.oscillatingSide)
-            offset = calculateHarmonicOscillation(self.time - oscillation.oscillationStart, oscillation.oscillationFrequency, oscillation.oscillationAmplitude)
-            velocity = calculateHarmonicOscillationVelocity(self.time - oscillation.oscillationStart, oscillation.oscillationFrequency, oscillation.oscillationAmplitude)
+            offset = calculateHarmonicOscillation((self.time - oscillation.oscillationStart) * oscillation.oscillationDirection, oscillation.oscillationFrequency, oscillation.oscillationAmplitude)
+            velocity = calculateHarmonicOscillationVelocity((self.time - oscillation.oscillationStart) * oscillation.oscillationDirection, oscillation.oscillationFrequency, oscillation.oscillationAmplitude)
             if side == SideType.x:
                 proxyArray[FieldStatIndex.LocationX.value] = proxyStart[FieldStatIndex.LocationX.value] + offset
                 proxyArray[FieldStatIndex.VelocityX.value] = velocity
