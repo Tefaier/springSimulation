@@ -13,13 +13,13 @@ kMillisecondsBetweenFrames = 20
 kSimulationStep = kMillisecondsBetweenFrames * 1
 offset_0 = 0.1
 mass = 0.1
-k = 30
+k = 100
 
 
 sys.setrecursionlimit(kMaxRecursionLimit)
-simulation = SimulationContainer([50], mass, k, offset_0, pd.Timedelta(milliseconds=1), 0.1)
+simulation = SimulationContainer([100], mass, k, offset_0, pd.Timedelta(milliseconds=1), 0.2)
 simulation.setForcedOscillation([
-        OscillationInfo((-1,), offset_0 / 3, calculateNaturalFrequency(mass=mass, k=k)),
+        OscillationInfo((-1,), offset_0 / 2, calculateNaturalFrequency(mass=mass, k=k)),
     ])
 
 
