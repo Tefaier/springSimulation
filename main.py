@@ -10,7 +10,7 @@ if __name__ == "__main__":
     mass = 1
     k = 10
     offset = 0.1
-    simulation = SimulationContainer([100], mass, k, offset, pd.Timedelta(milliseconds=10))
+    simulation = SimulationContainer([100], mass, k, offset, pd.Timedelta(milliseconds=10), 0.01)
     simulation.setForcedOscillation([
         OscillationInfo((-1,), offset / 3, calculateNaturalFrequency(mass=mass, k=k)),
     ])
