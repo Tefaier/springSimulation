@@ -27,7 +27,7 @@ class OscillationInfo:
         self.oscillationDirection = oscillationDirection
 
 class SimulationContainer:
-    infoNumber = 6
+    infoNumber = 8
     startInformation: np.array
     information: np.array # border values represent walls
     dimensions: tuple[int]
@@ -56,6 +56,7 @@ class SimulationContainer:
         # np.repeat + np.reshape when there are more dimensions
         self.information[:, FieldStatIndex.LocationX.value] = posX
         self.information[:-1, FieldStatIndex.OffsetX.value] = self.information[1:, FieldStatIndex.LocationX.value] - self.information[:-1, FieldStatIndex.LocationX.value]
+        self.information[:, FieldStatIndex.TemporaryLocationX.value] = self.information[:, FieldStatIndex.LocationX.value]
         # copy initial information for use
         self.startInformation = self.information.copy()
 
@@ -108,49 +109,53 @@ class SimulationContainer:
             self.k / 2
         )
         # simple location recalculation
-        self.information[1:-1, FieldStatIndex.LocationX.value] += (
+        self.information[1:-1, FieldStatIndex.TemporaryLocationX.value] = self.information[1:-1, FieldStatIndex.LocationX.value]
+        self.information[1:-1, FieldStatIndex.TemporaryLocationX.value] += (
             self.information[1:-1, FieldStatIndex.VelocityX.value] * self.deltaT.total_seconds()
         )
-        self.information[:-1, FieldStatIndex.OffsetX.value] = self.information[1:, FieldStatIndex.LocationX.value] - self.information[:-1, FieldStatIndex.LocationX.value]
+        self.information[:-1, FieldStatIndex.TemporaryOffsetLeftX.value] = self.information[1:, FieldStatIndex.TemporaryLocationX.value] - self.information[:-1, FieldStatIndex.LocationX.value]
+        self.information[:-1, FieldStatIndex.TemporaryOffsetRightX.value] = self.information[1:,
+                                                                       FieldStatIndex.LocationX.value] - self.information[
+                                                                                                         :-1,
+                                                                                                         FieldStatIndex.TemporaryLocationX.value]
         # enforce energy preservation
         newEnergy = (
             np.power(self.information[1:-1, FieldStatIndex.VelocityX.value], 2) * self.mass / 2 +
             np.power(self.getOCO(), 2) * self.k / 2
         )
         # if new energy is higher than should be
-        limit = np.where(np.abs(self.getOCO()) < np.abs(self.information[1:-1, FieldStatIndex.VelocityX.value]) * self.deltaT.total_seconds() * 3, True, False)
         energyHigher = np.where(newEnergy >= self.information[1:-1, FieldStatIndex.Energy.value], True, False)
         amplitudeOvershoot = np.where(
             np.power(self.getOCO(), 2) * self.k / 2 > self.information[1:-1, FieldStatIndex.Energy.value], True, False
         )
         amplitudeOvershoot = np.logical_and(amplitudeOvershoot, energyHigher)
         # overshoot in positive direction
-        mask = np.logical_and(limit, np.logical_and(
+        mask = np.logical_and(
                 amplitudeOvershoot,
                 np.where(
-                    self.information[:-2, FieldStatIndex.OffsetX.value] >
-                    self.information[1:-1, FieldStatIndex.OffsetX.value], True, False
-                )))
-        self.information[1:-1, FieldStatIndex.LocationX.value][mask] = (
-            self.information[1:-1, FieldStatIndex.LocationX.value] - (
-                self.information[:-2, FieldStatIndex.OffsetX.value] - (
-                self.information[:-2, FieldStatIndex.OffsetX.value] + self.information[1:-1,
-                                                                      FieldStatIndex.OffsetX.value]) / 2 -
+                    self.information[:-2, FieldStatIndex.TemporaryOffsetLeftX.value] >
+                    self.information[1:-1, FieldStatIndex.TemporaryOffsetRightX.value], True, False
+                ))
+        self.information[1:-1, FieldStatIndex.TemporaryLocationX.value][mask] = (
+            self.information[1:-1, FieldStatIndex.TemporaryLocationX.value] - (
+                self.information[:-2, FieldStatIndex.TemporaryOffsetLeftX.value] - (
+                self.information[:-2, FieldStatIndex.TemporaryOffsetLeftX.value] + self.information[1:-1,
+                                                                      FieldStatIndex.TemporaryOffsetRightX.value]) / 2 -
                 np.sqrt(self.information[1:-1, FieldStatIndex.Energy.value] * 2 / self.k)
             )
         )[mask]
         # overshoot in negative direction
-        mask = np.logical_and(limit, np.logical_and(
+        mask = np.logical_and(
                 amplitudeOvershoot,
                 np.where(
-                    self.information[:-2, FieldStatIndex.OffsetX.value] <
-                    self.information[1:-1, FieldStatIndex.OffsetX.value], True, False
-                )))
-        self.information[1:-1, FieldStatIndex.LocationX.value][mask] = (
-                self.information[1:-1, FieldStatIndex.LocationX.value] - (
-                self.information[:-2, FieldStatIndex.OffsetX.value] - (
-                self.information[:-2, FieldStatIndex.OffsetX.value] + self.information[1:-1,
-                                                                      FieldStatIndex.OffsetX.value]) / 2 +
+                    self.information[:-2, FieldStatIndex.TemporaryOffsetLeftX.value] <
+                    self.information[1:-1, FieldStatIndex.TemporaryOffsetRightX.value], True, False
+                ))
+        self.information[1:-1, FieldStatIndex.TemporaryLocationX.value][mask] = (
+                self.information[1:-1, FieldStatIndex.TemporaryLocationX.value] - (
+                self.information[:-2, FieldStatIndex.TemporaryOffsetLeftX.value] - (
+                self.information[:-2, FieldStatIndex.TemporaryOffsetLeftX.value] + self.information[1:-1,
+                                                                      FieldStatIndex.TemporaryOffsetRightX.value]) / 2 +
                 np.sqrt(self.information[1:-1, FieldStatIndex.Energy.value] * 2 / self.k)
         )
         )[mask]
@@ -165,13 +170,14 @@ class SimulationContainer:
             )) * np.sign(self.information[1: -1, FieldStatIndex.VelocityX.value])
         )[mask]
         # update offset after forced change
+        self.information[1:-1, FieldStatIndex.LocationX.value] = self.information[1:-1, FieldStatIndex.TemporaryLocationX.value]
         self.information[:-1, FieldStatIndex.OffsetX.value] = self.information[1:, FieldStatIndex.LocationX.value] - self.information[:-1, FieldStatIndex.LocationX.value]
 
     def getOCO(self) -> np.array:
         return (np.maximum(
-            self.information[:-2, FieldStatIndex.OffsetX.value],
-            self.information[1:-1, FieldStatIndex.OffsetX.value]) -
-                ((self.information[:-2, FieldStatIndex.OffsetX.value] + self.information[1:-1, FieldStatIndex.OffsetX.value]) / 2))
+            self.information[:-2, FieldStatIndex.TemporaryOffsetLeftX.value],
+            self.information[1:-1, FieldStatIndex.TemporaryOffsetRightX.value]) -
+                ((self.information[:-2, FieldStatIndex.TemporaryOffsetLeftX.value] + self.information[1:-1, FieldStatIndex.TemporaryOffsetRightX.value]) / 2))
 
     def performForcedOscilation(self):
         if self.oscillations is None: return
