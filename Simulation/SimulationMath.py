@@ -18,7 +18,16 @@ def calculateHarmonicOscillationAcceleration(time: pd.Timedelta, frequency: floa
 # mass - масса шарика в кг
 # density - плотность материала шарика, кг/м^3, по умолчанию железо
 def getFrictionCoefficientMas(viscosity: float, mass: float, density: float = 7874) -> float:
-    return getFrictionCoefficientRad(viscosity, ((((mass / density) * 3) / 4) / math.pi) ** (1./3))
+    return getFrictionCoefficientRad(viscosity, calculateSphereRadius(mass, density))
 
 def getFrictionCoefficientRad(viscosity: float, radius: float) -> float:
     return 6 * math.pi * radius * viscosity
+
+def getViscosityBackMas(coefficient: float, mass: float, density: float = 7874) -> float:
+    return getViscosityBackRad(coefficient, calculateSphereRadius(mass, density))
+
+def getViscosityBackRad(coefficient: float, radius: float) -> float:
+    return coefficient / (6 * math.pi * radius)
+
+def calculateSphereRadius(mass: float, density: float = 7874) -> float:
+    return ((((mass / density) * 3) / 4) / math.pi) ** (1./3)
