@@ -5,6 +5,9 @@ import pandas as pd
 def calculateNaturalFrequency(k: float, mass: float) -> float:
     return math.sqrt(k / mass)
 
+def calculateNaturalPeriod(k: float, mass: float) -> float:
+    return 2 * math.pi * math.sqrt(mass / k)
+
 def calculateHarmonicOscillation(time: pd.Timedelta, frequency: float, amplitude: float) -> float:
     return amplitude * math.sin(frequency * time.total_seconds())
 
