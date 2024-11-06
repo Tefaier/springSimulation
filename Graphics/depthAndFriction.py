@@ -1,0 +1,36 @@
+import pandas as pd
+import matplotlib.pyplot as plt
+from Simulation.Container import SimulationContainer, OscillationInfo
+from Simulation.SimulationMath import calculateNaturalFrequency
+from Simulation import Enums
+
+def startProgram(coefficient):
+    countIterations = 10000
+    mass = 0.1
+    k = 10
+    offset = 0.1
+    simulation = SimulationContainer([100], mass, k, offset, pd.Timedelta(milliseconds=1), coefficient)
+    simulation.setForcedOscillation([
+        OscillationInfo((-1,), offset / 3, calculateNaturalFrequency(mass=mass, k=k)),
+    ])
+    for i in range(1, countIterations):
+        simulation.iterate()
+    for j in range(100):
+        if (abs(startPosition[j] - simulation.information[j + 1, Enums.FieldStatIndex.LocationX.value]) != 0):
+            maxNum = j + 1
+    ans.append(maxNum)
+
+
+ans = []
+startPosition = [0.1, 0.2, 0.30000000000000004, 0.4, 0.5, 0.6000000000000001, 0.7000000000000001, 0.8, 0.9, 1.0, 1.1, 1.2000000000000002, 1.3, 1.4000000000000001, 1.5, 1.6, 1.7000000000000002, 1.8, 1.9000000000000001, 2.0, 2.1, 2.2, 2.3000000000000003, 2.4000000000000004, 2.5, 2.6, 2.7, 2.8000000000000003, 2.9000000000000004, 3.0, 3.1, 3.2, 3.3000000000000003, 3.4000000000000004, 3.5, 3.6, 3.7, 3.8000000000000003, 3.9000000000000004, 4.0, 4.1000000000000005, 4.2, 4.3, 4.4, 4.5, 4.6000000000000005, 4.7, 4.800000000000001, 4.9, 5.0, 5.1000000000000005, 5.2, 5.300000000000001, 5.4, 5.5, 5.6000000000000005, 5.7, 5.800000000000001, 5.9, 6.0, 6.1000000000000005, 6.2, 6.300000000000001, 6.4, 6.5, 6.6000000000000005, 6.7, 6.800000000000001, 6.9, 7.0, 7.1000000000000005, 7.2, 7.300000000000001, 7.4, 7.5, 7.6000000000000005, 7.7, 7.800000000000001, 7.9, 8.0, 8.1, 8.200000000000001, 8.3, 8.4, 8.5, 8.6, 8.700000000000001, 8.8, 8.9, 9.0, 9.1, 9.200000000000001, 9.3, 9.4, 9.5, 9.600000000000001, 9.700000000000001, 9.8, 9.9, 10.0]
+friction = []
+maxNum = 0
+for i in range(10):
+    friction.append(i)
+    startProgram(i)
+plt.plot(friction, ans)
+plt.xlabel('Ось k') # коэффициент трения
+plt.ylabel('Ось n') # номер самого правого грузика, которого задело колебание
+plt.title('График зависимости глубины проникновения от сопротивления среды')
+plt.legend()
+plt.show()
